@@ -1,10 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,145 +25,182 @@ interface DrugInfo {
   sideEffects: string[];
 }
 
-function ScannerPage() {
+// Mock database of drug information
+const drugDatabase: Record<string, DrugInfo> = {
+  MED001: {
+    id: "MED001",
+    name: "Acetaminophen",
+    description:
+      "Pain reliever and fever reducer used for mild to moderate pain relief.",
+    dosage:
+      "325-650mg every 4-6 hours as needed. Do not exceed 3000mg per day.",
+    sideEffects: [
+      "Nausea",
+      "Stomach pain",
+      "Loss of appetite",
+      "Headache",
+      "Rash",
+    ],
+  },
+  MED002: {
+    id: "MED002",
+    name: "Amoxicillin",
+    description: "Antibiotic used to treat a variety of bacterial infections.",
+    dosage:
+      "250-500mg every 8 hours or 500-875mg every 12 hours, depending on infection severity.",
+    sideEffects: ["Diarrhea", "Stomach pain", "Nausea", "Vomiting", "Rash"],
+  },
+  MED003: {
+    id: "MED003",
+    name: "Lisinopril",
+    description:
+      "ACE inhibitor used to treat high blood pressure and heart failure.",
+    dosage:
+      "10-40mg once daily. May start with lower dose of 5mg in some patients.",
+    sideEffects: [
+      "Dizziness",
+      "Headache",
+      "Dry cough",
+      "Fatigue",
+      "Hypotension",
+    ],
+  },
+};
+
+export default function ScannerPage() {
   const [scanning, setScanning] = useState(false);
   const [scannerId, setScannerId] = useState<string | null>(null);
-  const drugDatabase: Record<string, DrugInfo> = {
-    MED001: {
-      id: "MED001",
-      name: "Acetaminophen",
-      description:
-        "Pain reliever and fever reducer used for mild to moderate pain relief.",
-      dosage:
-        "325-650mg every 4-6 hours as needed. Do not exceed 3000mg per day.",
-      sideEffects: [
-        "Nausea",
-        "Stomach pain",
-        "Loss of appetite",
-        "Headache",
-        "Rash",
-      ],
-    },
-    MED002: {
-      id: "MED002",
-      name: "Amoxicillin",
-      description:
-        "Antibiotic used to treat a variety of bacterial infections.",
-      dosage:
-        "250-500mg every 8 hours or 500-875mg every 12 hours, depending on infection severity.",
-      sideEffects: ["Diarrhea", "Stomach pain", "Nausea", "Vomiting", "Rash"],
-    },
-    MED003: {
-      id: "MED003",
-      name: "Lisinopril",
-      description:
-        "ACE inhibitor used to treat high blood pressure and heart failure.",
-      dosage:
-        "10-40mg once daily. May start with lower dose of 5mg in some patients.",
-      sideEffects: [
-        "Dizziness",
-        "Headache",
-        "Dry cough",
-        "Fatigue",
-        "Hypotension",
-      ],
-    },
-  };
-
   const [drugInfo, setDrugInfo] = useState<DrugInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const readerRef = useRef<HTMLDivElement | null>(null);
+  const [html5QrCode, setHtml5QrCode] = useState<Html5Qrcode | null>(null);
+  const readerRef = useRef<HTMLDivElement>(null);
 
+  // Initialize scanner when component mounts
   useEffect(() => {
-    let html5QrCode: Html5Qrcode | null = null;
+    return () => {
+      // Clean up scanner when component unmounts
+      if (html5QrCode) {
+        html5QrCode
+          .stop()
+          .catch((err) => console.error("Error stopping scanner:", err));
+      }
+    };
+  }, [html5QrCode]);
 
-    const startScanner = async () => {
+  // Handle scanning state changes
+  useEffect(() => {
+    const initializeScanner = async () => {
       try {
-        // Check camera permissions
-        const permission = await navigator.permissions.query({
-          name: "camera" as any,
-        });
-
-        if (permission.state === "denied") {
-          setError(
-            "Camera access is denied. Please enable it in your browser settings."
-          );
-          return;
-        } else if (permission.state === "prompt") {
-          await navigator.mediaDevices.getUserMedia({ video: true }); // Triggers prompt
+        // First stop any existing scanner
+        if (html5QrCode) {
+          await html5QrCode.stop();
         }
 
-        setScanning(true);
-        setDrugInfo(null);
-        setError(null);
-      } catch (err) {
-        console.error("Error accessing camera:", err);
-        setError("Could not access camera. Please check permissions.");
-      }
+        if (!scanning) return;
 
-      if (!readerRef.current) return;
+        // Make sure the reader element exists
+        if (!readerRef.current) {
+          console.error("Reader element not found");
+          setError("Scanner initialization failed. Please try again.");
+          setScanning(false);
+          return;
+        }
 
-      html5QrCode = new Html5Qrcode("reader"); // Use the correct ID
-      try {
-        await html5QrCode.start(
+        // Create a new scanner instance
+        const newScanner = new Html5Qrcode("reader");
+        setHtml5QrCode(newScanner);
+
+        // Configure scanner
+        const config = {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+        };
+
+        // Start scanning
+        await newScanner.start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 250, height: 250 } },
+          config,
           (decodedText) => {
-            html5QrCode?.stop();
-            setScanning(false);
-
-            if (drugDatabase[decodedText]) {
-              setDrugInfo(drugDatabase[decodedText]);
-              setScannerId(decodedText);
-              setError(null);
-
-              // Save to history
-              const history = JSON.parse(
-                localStorage.getItem("scanHistory") || "[]"
-              );
-              if (!history.includes(decodedText)) {
-                history.unshift(decodedText);
-                localStorage.setItem(
-                  "scanHistory",
-                  JSON.stringify(history.slice(0, 10))
-                );
-              }
-            } else {
-              setError(`No information found for code: ${decodedText}`);
-              setDrugInfo(null);
-            }
+            // Success callback
+            handleQrCodeSuccess(decodedText, newScanner);
           },
-          (error) => {
-            console.error("Error decoding QR code:", error);
+          (errorMessage) => {
+            // Error callback - we don't need to show these to the user
+            console.log(errorMessage);
           }
         );
-        setScanning(true);
       } catch (err) {
         console.error("Error starting scanner:", err);
-        setError("Could not access camera. Please check permissions.");
+        setError(
+          "Could not access camera. Please check permissions and try again."
+        );
+        setScanning(false);
       }
     };
 
     if (scanning) {
-      startScanner();
+      initializeScanner();
     }
-
-    return () => {
-      if (html5QrCode) {
-        html5QrCode
-          .stop()
-          .catch((error) => console.error("Error stopping scanner:", error));
-      }
-    };
   }, [scanning]);
 
-  const handleStartScan = () => {
-    setScanning(true);
-    setDrugInfo(null);
-    setError(null);
+  const handleQrCodeSuccess = async (
+    decodedText: string,
+    scanner: Html5Qrcode
+  ) => {
+    try {
+      // Stop scanning
+      await scanner.stop();
+      setScanning(false);
+
+      // Process the QR code data
+      if (drugDatabase[decodedText]) {
+        setDrugInfo(drugDatabase[decodedText]);
+        setScannerId(decodedText);
+        setError(null);
+
+        // Save to history in localStorage
+        const history = JSON.parse(localStorage.getItem("scanHistory") || "[]");
+        if (!history.includes(decodedText)) {
+          history.unshift(decodedText);
+          localStorage.setItem(
+            "scanHistory",
+            JSON.stringify(history.slice(0, 10))
+          );
+        }
+      } else {
+        setError(`No information found for code: ${decodedText}`);
+        setDrugInfo(null);
+      }
+    } catch (err) {
+      console.error("Error processing QR code:", err);
+      setError("Failed to process QR code. Please try again.");
+    }
   };
 
-  const handleStopScan = () => {
+  const handleStartScan = async () => {
+    setError(null);
+    setDrugInfo(null);
+
+    try {
+      // Request camera permission explicitly
+      await navigator.mediaDevices.getUserMedia({ video: true });
+      setScanning(true);
+    } catch (err) {
+      console.error("Camera permission denied:", err);
+      setError("Camera access denied. Please check your browser permissions.");
+    }
+  };
+
+  const handleStopScan = async () => {
+    if (html5QrCode) {
+      try {
+        await html5QrCode.stop();
+      } catch (err) {
+        console.error("Error stopping scanner:", err);
+      }
+    }
     setScanning(false);
   };
 
@@ -178,7 +214,7 @@ function ScannerPage() {
       >
         <Link
           href="/"
-          className="flex items-center text-[#101010] hover:underline"
+          className="flex items-center text-primary hover:underline"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Home
@@ -190,7 +226,7 @@ function ScannerPage() {
         transition={{ duration: 0.5 }}
       >
         <Card className="overflow-hidden border-2 border-gray-100 shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-[#101010]/10 to-[#101010]/5">
+          <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">
             <CardTitle>QR Code Scanner</CardTitle>
             <CardDescription>
               Scan a medication QR code to view detailed information
@@ -213,7 +249,7 @@ function ScannerPage() {
                       className="w-full h-[300px] bg-gray-100 rounded-lg overflow-hidden"
                     ></div>
                     <motion.div
-                      className="absolute inset-0 pointer-events-none border-2 border-[#101010] rounded-lg"
+                      className="absolute inset-0 pointer-events-none border-2 border-primary rounded-lg"
                       animate={{
                         boxShadow: [
                           "0 0 0 0 rgba(59, 130, 246, 0)",
@@ -254,7 +290,7 @@ function ScannerPage() {
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.1 }}
                   >
-                    <h3 className="font-semibold text-lg text-[#101010]">
+                    <h3 className="font-semibold text-lg text-primary">
                       {drugInfo.name}
                     </h3>
                     <p className="text-sm text-gray-500">ID: {drugInfo.id}</p>
@@ -331,7 +367,7 @@ function ScannerPage() {
                   >
                     <Button
                       onClick={handleStartScan}
-                      className="mx-auto bg-[#101010] hover:bg-[#101010]/90 text-white"
+                      className="mx-auto bg-primary hover:bg-primary/90"
                     >
                       <Camera className="mr-2 h-4 w-4" />
                       Start Scanning
@@ -359,5 +395,3 @@ function ScannerPage() {
     </div>
   );
 }
-
-export default ScannerPage;
