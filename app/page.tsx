@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { motion } from "framer-motion"
-import { Scan, History } from "lucide-react"
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { Scan, History } from "lucide-react";
 
 export default function Home() {
   return (
@@ -18,7 +18,7 @@ export default function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.5 }}
-            className="text-3xl font-bold text-primary"
+            className="text-3xl font-bold text-[#101010]"
           >
             MediScan
           </motion.h1>
@@ -39,7 +39,7 @@ export default function Home() {
           >
             <Link
               href="/scanner"
-              className="w-full flex items-center justify-center px-4 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+              className="w-full flex items-center justify-center px-4 py-3 border border-transparent text-base font-medium rounded-md text-white bg-[#101010] hover:bg-[#101010]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#101010]"
             >
               <Scan className="mr-2 h-5 w-5" />
               Start Scanning
@@ -52,7 +52,7 @@ export default function Home() {
           >
             <Link
               href="/history"
-              className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+              className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#101010]"
             >
               <History className="mr-2 h-5 w-5" />
               View Scan History
@@ -61,6 +61,5 @@ export default function Home() {
         </div>
       </motion.div>
     </main>
-  )
+  );
 }
-
