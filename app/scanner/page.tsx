@@ -1,9 +1,8 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -73,12 +72,11 @@ export default function ScannerPage() {
   const [drugInfo, setDrugInfo] = useState<DrugInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [html5QrCode, setHtml5QrCode] = useState<Html5Qrcode | null>(null);
-  const readerRef = useRef<HTMLDivElement>(null);
+  const scannerInitialized = useRef(false);
 
-  // Initialize scanner when component mounts
+  // Clean up scanner when component unmounts
   useEffect(() => {
     return () => {
-      // Clean up scanner when component unmounts
       if (html5QrCode) {
         html5QrCode
           .stop()
@@ -89,22 +87,30 @@ export default function ScannerPage() {
 
   // Handle scanning state changes
   useEffect(() => {
+    // Skip if not scanning or already initialized
+    if (!scanning || scannerInitialized.current) return;
+
+    let timeoutId: NodeJS.Timeout;
+
     const initializeScanner = async () => {
       try {
         // First stop any existing scanner
         if (html5QrCode) {
           await html5QrCode.stop();
+          setHtml5QrCode(null);
         }
 
-        if (!scanning) return;
-
-        // Make sure the reader element exists
-        if (!readerRef.current) {
-          console.error("Reader element not found");
-          setError("Scanner initialization failed. Please try again.");
-          setScanning(false);
+        // Check if the DOM element exists
+        const readerElement = document.getElementById("reader");
+        if (!readerElement) {
+          console.log("Reader element not found, retrying...");
+          // Retry after a short delay
+          timeoutId = setTimeout(initializeScanner, 500);
           return;
         }
+
+        console.log("Reader element found, initializing scanner");
+        scannerInitialized.current = true;
 
         // Create a new scanner instance
         const newScanner = new Html5Qrcode("reader");
@@ -115,7 +121,7 @@ export default function ScannerPage() {
           fps: 10,
           qrbox: { width: 250, height: 250 },
           aspectRatio: 1.0,
-          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+          formatsToSupport: [Html5Qrcode.FORMATS.QR_CODE],
         };
 
         // Start scanning
@@ -137,11 +143,35 @@ export default function ScannerPage() {
           "Could not access camera. Please check permissions and try again."
         );
         setScanning(false);
+        scannerInitialized.current = false;
       }
     };
 
-    if (scanning) {
-      initializeScanner();
+    // Request camera permission and initialize scanner
+    navigator.mediaDevices
+      .getUserMedia({ video: true })
+      .then(() => {
+        initializeScanner();
+      })
+      .catch((err) => {
+        console.error("Camera permission denied:", err);
+        setError(
+          "Camera access denied. Please check your browser permissions."
+        );
+        setScanning(false);
+        scannerInitialized.current = false;
+      });
+
+    // Clean up timeout if component unmounts or dependencies change
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [scanning, html5QrCode]);
+
+  // Reset initialization flag when scanning is stopped
+  useEffect(() => {
+    if (!scanning) {
+      scannerInitialized.current = false;
     }
   }, [scanning]);
 
@@ -153,6 +183,7 @@ export default function ScannerPage() {
       // Stop scanning
       await scanner.stop();
       setScanning(false);
+      scannerInitialized.current = false;
 
       // Process the QR code data
       if (drugDatabase[decodedText]) {
@@ -179,18 +210,10 @@ export default function ScannerPage() {
     }
   };
 
-  const handleStartScan = async () => {
+  const handleStartScan = () => {
     setError(null);
     setDrugInfo(null);
-
-    try {
-      // Request camera permission explicitly
-      await navigator.mediaDevices.getUserMedia({ video: true });
-      setScanning(true);
-    } catch (err) {
-      console.error("Camera permission denied:", err);
-      setError("Camera access denied. Please check your browser permissions.");
-    }
+    setScanning(true);
   };
 
   const handleStopScan = async () => {
@@ -202,6 +225,7 @@ export default function ScannerPage() {
       }
     }
     setScanning(false);
+    scannerInitialized.current = false;
   };
 
   return (
@@ -243,9 +267,9 @@ export default function ScannerPage() {
                   className="space-y-4"
                 >
                   <div className="relative">
+                    {/* This is the element that will contain the scanner */}
                     <div
                       id="reader"
-                      ref={readerRef}
                       className="w-full h-[300px] bg-gray-100 rounded-lg overflow-hidden"
                     ></div>
                     <motion.div
