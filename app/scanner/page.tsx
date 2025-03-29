@@ -391,7 +391,7 @@ export default function ScannerPage() {
                   >
                     <Button
                       onClick={handleStartScan}
-                      className="mx-auto bg-primary hover:bg-primary/90"
+                      className="mx-auto bg-[#101010] hover:bg-[#101010]/90 text-white"
                     >
                       <Camera className="mr-2 h-4 w-4" />
                       Start Scanning
