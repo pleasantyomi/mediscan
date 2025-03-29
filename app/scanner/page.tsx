@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -121,7 +121,7 @@ export default function ScannerPage() {
           fps: 10,
           qrbox: { width: 250, height: 250 },
           aspectRatio: 1.0,
-          formatsToSupport: [Html5Qrcode.FORMATS.QR_CODE],
+          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
         };
 
         // Start scanning
