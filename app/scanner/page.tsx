@@ -116,11 +116,15 @@ export default function ScannerPage() {
         const newScanner = new Html5Qrcode("reader");
         setHtml5QrCode(newScanner);
 
+        // Get the viewport dimensions for the QR box
+        const viewportWidth = Math.min(window.innerWidth, 500);
+        const qrboxSize = Math.min(viewportWidth * 0.7, 250);
+
         // Configure scanner
         const config = {
           fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
+          qrbox: { width: qrboxSize, height: qrboxSize },
+          aspectRatio: window.innerHeight / window.innerWidth,
           formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
         };
 
@@ -173,6 +177,19 @@ export default function ScannerPage() {
     if (!scanning) {
       scannerInitialized.current = false;
     }
+  }, [scanning]);
+
+  // Lock body scroll when scanning
+  useEffect(() => {
+    if (scanning) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [scanning]);
 
   const handleQrCodeSuccess = async (
@@ -229,193 +246,220 @@ export default function ScannerPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-md p-4">
-      <motion.div
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.3 }}
-        className="mb-4"
-      >
-        <Link
-          href="/"
-          className="flex items-center text-primary hover:underline"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Home
-        </Link>
-      </motion.div>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <Card className="overflow-hidden border-2 border-gray-100 shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">
-            <CardTitle>QR Code Scanner</CardTitle>
-            <CardDescription>
-              Scan a medication QR code to view detailed information
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-6">
-            <AnimatePresence mode="wait">
-              {scanning ? (
-                <motion.div
-                  key="scanning"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="space-y-4"
-                >
-                  <div className="relative">
-                    {/* This is the element that will contain the scanner */}
-                    <div
-                      id="reader"
-                      className="w-full h-[300px] bg-gray-100 rounded-lg overflow-hidden"
-                    ></div>
+    <>
+      {scanning ? (
+        <div className="fixed inset-0 z-50 bg-black">
+          <div className="relative h-full w-full">
+            {/* This is the element that will contain the scanner */}
+            <div id="reader" className="absolute inset-0 w-full h-full"></div>
+
+            {/* Centered viewfinder overlay */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <motion.div
+                className="border-2 border-white rounded-lg w-[70vw] h-[70vw] max-w-[250px] max-h-[250px]"
+                animate={{
+                  boxShadow: [
+                    "0 0 0 0 rgba(255, 255, 255, 0)",
+                    "0 0 0 10px rgba(255, 255, 255, 0.2)",
+                  ],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Number.POSITIVE_INFINITY,
+                }}
+              />
+            </div>
+
+            {/* Header with back button */}
+            <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white bg-black/50 rounded-full"
+                onClick={handleStopScan}
+              >
+                <X className="h-6 w-6" />
+              </Button>
+
+              <div className="text-white text-sm font-medium bg-black/50 px-4 py-2 rounded-full">
+                Scan QR Code
+              </div>
+            </div>
+
+            {/* Instructions at the bottom */}
+            <div className="absolute bottom-0 left-0 right-0 p-6 text-center">
+              <p className="text-white text-sm mb-4 bg-black/50 p-2 rounded-lg">
+                Position the QR code within the frame to scan
+              </p>
+              <Button
+                variant="destructive"
+                onClick={handleStopScan}
+                className="w-full"
+              >
+                <X className="mr-2 h-4 w-4" />
+                Cancel Scan
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="container mx-auto max-w-md p-4">
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3 }}
+            className="mb-4"
+          >
+            <Link
+              href="/"
+              className="flex items-center text-[#101010] hover:underline"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Home
+            </Link>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Card className="overflow-hidden border-2 border-gray-100 shadow-lg">
+              <CardHeader className="bg-gradient-to-r from-[#101010]/10 to-[#101010]/5">
+                <CardTitle>QR Code Scanner</CardTitle>
+                <CardDescription>
+                  Scan a medication QR code to view detailed information
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6">
+                <AnimatePresence mode="wait">
+                  {drugInfo ? (
                     <motion.div
-                      className="absolute inset-0 pointer-events-none border-2 border-primary rounded-lg"
-                      animate={{
-                        boxShadow: [
-                          "0 0 0 0 rgba(59, 130, 246, 0)",
-                          "0 0 0 10px rgba(59, 130, 246, 0)",
-                        ],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Number.POSITIVE_INFINITY,
-                      }}
-                    />
-                  </div>
+                      key="results"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                      className="space-y-4"
+                    >
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.1 }}
+                      >
+                        <h3 className="font-semibold text-lg text-[#101010]">
+                          {drugInfo.name}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          ID: {drugInfo.id}
+                        </p>
+                      </motion.div>
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                        className="p-4 bg-gray-50 rounded-lg"
+                      >
+                        <h4 className="font-medium text-gray-700">
+                          Description
+                        </h4>
+                        <p className="text-sm mt-1">{drugInfo.description}</p>
+                      </motion.div>
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.3 }}
+                        className="p-4 bg-gray-50 rounded-lg"
+                      >
+                        <h4 className="font-medium text-gray-700">Dosage</h4>
+                        <p className="text-sm mt-1">{drugInfo.dosage}</p>
+                      </motion.div>
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.4 }}
+                        className="p-4 bg-gray-50 rounded-lg"
+                      >
+                        <h4 className="font-medium text-gray-700">
+                          Side Effects
+                        </h4>
+                        <ul className="list-disc list-inside text-sm mt-1">
+                          {drugInfo.sideEffects.map((effect, index) => (
+                            <motion.li
+                              key={index}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 0.4 + index * 0.1 }}
+                            >
+                              {effect}
+                            </motion.li>
+                          ))}
+                        </ul>
+                      </motion.div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="empty"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="text-center py-8"
+                    >
+                      {error ? (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="text-red-500 mb-4 p-3 bg-red-50 rounded-lg"
+                        >
+                          {error}
+                        </motion.div>
+                      ) : (
+                        <motion.p
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.2 }}
+                          className="text-gray-500 mb-4"
+                        >
+                          No QR code scanned yet
+                        </motion.p>
+                      )}
+                      <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 400,
+                          damping: 17,
+                        }}
+                      >
+                        <Button
+                          onClick={handleStartScan}
+                          className="mx-auto bg-[#101010] hover:bg-[#101010]/90 text-white"
+                        >
+                          <Camera className="mr-2 h-4 w-4" />
+                          Start Scanning
+                        </Button>
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </CardContent>
+              {drugInfo && (
+                <CardFooter className="bg-gray-50 border-t">
                   <motion.div
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
+                    className="w-full"
                   >
-                    <Button
-                      variant="destructive"
-                      onClick={handleStopScan}
-                      className="w-full"
-                    >
-                      <X className="mr-2 h-4 w-4" />
-                      Stop Scanning
+                    <Button onClick={handleStartScan} className="w-full">
+                      Scan Another Code
                     </Button>
                   </motion.div>
-                </motion.div>
-              ) : drugInfo ? (
-                <motion.div
-                  key="results"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="space-y-4"
-                >
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.1 }}
-                  >
-                    <h3 className="font-semibold text-lg text-primary">
-                      {drugInfo.name}
-                    </h3>
-                    <p className="text-sm text-gray-500">ID: {drugInfo.id}</p>
-                  </motion.div>
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                    className="p-4 bg-gray-50 rounded-lg"
-                  >
-                    <h4 className="font-medium text-gray-700">Description</h4>
-                    <p className="text-sm mt-1">{drugInfo.description}</p>
-                  </motion.div>
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.3 }}
-                    className="p-4 bg-gray-50 rounded-lg"
-                  >
-                    <h4 className="font-medium text-gray-700">Dosage</h4>
-                    <p className="text-sm mt-1">{drugInfo.dosage}</p>
-                  </motion.div>
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.4 }}
-                    className="p-4 bg-gray-50 rounded-lg"
-                  >
-                    <h4 className="font-medium text-gray-700">Side Effects</h4>
-                    <ul className="list-disc list-inside text-sm mt-1">
-                      {drugInfo.sideEffects.map((effect, index) => (
-                        <motion.li
-                          key={index}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.4 + index * 0.1 }}
-                        >
-                          {effect}
-                        </motion.li>
-                      ))}
-                    </ul>
-                  </motion.div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="empty"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="text-center py-8"
-                >
-                  {error ? (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="text-red-500 mb-4 p-3 bg-red-50 rounded-lg"
-                    >
-                      {error}
-                    </motion.div>
-                  ) : (
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.2 }}
-                      className="text-gray-500 mb-4"
-                    >
-                      No QR code scanned yet
-                    </motion.p>
-                  )}
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                  >
-                    <Button
-                      onClick={handleStartScan}
-                      className="mx-auto bg-[#101010] hover:bg-[#101010]/90 text-white"
-                    >
-                      <Camera className="mr-2 h-4 w-4" />
-                      Start Scanning
-                    </Button>
-                  </motion.div>
-                </motion.div>
+                </CardFooter>
               )}
-            </AnimatePresence>
-          </CardContent>
-          {drugInfo && (
-            <CardFooter className="bg-gray-50 border-t">
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full"
-              >
-                <Button onClick={handleStartScan} className="w-full">
-                  Scan Another Code
-                </Button>
-              </motion.div>
-            </CardFooter>
-          )}
-        </Card>
-      </motion.div>
-    </div>
+            </Card>
+          </motion.div>
+        </div>
+      )}
+    </>
   );
 }
