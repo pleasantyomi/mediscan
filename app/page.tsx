@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import Link from "next/link";
@@ -45,7 +46,7 @@ export default function Home() {
               Start Scanning
             </Link>
           </motion.div>
-          <motion.div
+          {/* <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
@@ -57,8 +58,8 @@ export default function Home() {
               <QrCode className="mr-2 h-5 w-5" />
               Generate QR Codes
             </Link>
-          </motion.div>
-          <motion.div
+          </motion.div> */}
+          {/* <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
@@ -70,7 +71,7 @@ export default function Home() {
               <History className="mr-2 h-5 w-5" />
               View Scan History
             </Link>
-          </motion.div>
+          </motion.div> */}
         </div>
       </motion.div>
     </main>
