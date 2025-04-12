@@ -116,16 +116,23 @@ export default function ScannerPage() {
         const newScanner = new Html5Qrcode("reader");
         setHtml5QrCode(newScanner);
 
-        // Get the viewport dimensions for the QR box
+        // Get the viewport dimensions for the barcode box
         const viewportWidth = Math.min(window.innerWidth, 500);
-        const qrboxSize = Math.min(viewportWidth * 0.7, 250);
 
-        // Configure scanner
+        // Configure scanner for barcodes - make the scanning area wider and shorter
         const config = {
           fps: 10,
-          qrbox: { width: qrboxSize, height: qrboxSize },
+          qrbox: { width: viewportWidth * 0.8, height: 100 }, // Wider and shorter for barcodes
           aspectRatio: window.innerHeight / window.innerWidth,
-          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.CODABAR,
+          ],
         };
 
         // Start scanning
@@ -134,7 +141,7 @@ export default function ScannerPage() {
           config,
           (decodedText) => {
             // Success callback
-            handleQrCodeSuccess(decodedText, newScanner);
+            handleBarcodeSuccess(decodedText, newScanner);
           },
           (errorMessage) => {
             // Error callback - we don't need to show these to the user
@@ -192,7 +199,7 @@ export default function ScannerPage() {
     };
   }, [scanning]);
 
-  const handleQrCodeSuccess = async (
+  const handleBarcodeSuccess = async (
     decodedText: string,
     scanner: Html5Qrcode
   ) => {
@@ -202,7 +209,7 @@ export default function ScannerPage() {
       setScanning(false);
       scannerInitialized.current = false;
 
-      // Process the QR code data
+      // Process the barcode data
       if (drugDatabase[decodedText]) {
         setDrugInfo(drugDatabase[decodedText]);
         setScannerId(decodedText);
@@ -222,8 +229,8 @@ export default function ScannerPage() {
         setDrugInfo(null);
       }
     } catch (err) {
-      console.error("Error processing QR code:", err);
-      setError("Failed to process QR code. Please try again.");
+      console.error("Error processing barcode:", err);
+      setError("Failed to process barcode. Please try again.");
     }
   };
 
@@ -253,10 +260,10 @@ export default function ScannerPage() {
             {/* This is the element that will contain the scanner */}
             <div id="reader" className="absolute inset-0 w-full h-full"></div>
 
-            {/* Centered viewfinder overlay */}
+            {/* Centered viewfinder overlay - wider and shorter for barcodes */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <motion.div
-                className="border-2 border-white rounded-lg w-[70vw] h-[70vw] max-w-[250px] max-h-[250px]"
+                className="border-2 border-white rounded-lg w-[80vw] h-[100px] max-w-[400px]"
                 animate={{
                   boxShadow: [
                     "0 0 0 0 rgba(255, 255, 255, 0)",
@@ -282,14 +289,14 @@ export default function ScannerPage() {
               </Button>
 
               <div className="text-white text-sm font-medium bg-black/50 px-4 py-2 rounded-full">
-                Scan QR Code
+                Scan Barcode
               </div>
             </div>
 
             {/* Instructions at the bottom */}
             <div className="absolute bottom-0 left-0 right-0 p-6 text-center">
               <p className="text-white text-sm mb-4 bg-black/50 p-2 rounded-lg">
-                Position the QR code within the frame to scan
+                Position the barcode within the frame to scan
               </p>
               <Button
                 variant="destructive"
@@ -312,7 +319,7 @@ export default function ScannerPage() {
           >
             <Link
               href="/"
-              className="flex items-center text-[#101010] hover:underline"
+              className="flex items-center text-primary hover:underline"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Home
@@ -324,10 +331,10 @@ export default function ScannerPage() {
             transition={{ duration: 0.5 }}
           >
             <Card className="overflow-hidden border-2 border-gray-100 shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-[#101010]/10 to-[#101010]/5">
-                <CardTitle>QR Code Scanner</CardTitle>
+              <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">
+                <CardTitle>Barcode Scanner</CardTitle>
                 <CardDescription>
-                  Scan a medication QR code to view detailed information
+                  Scan a medication barcode to view detailed information
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-6">
@@ -346,7 +353,7 @@ export default function ScannerPage() {
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.1 }}
                       >
-                        <h3 className="font-semibold text-lg text-[#101010]">
+                        <h3 className="font-semibold text-lg text-primary">
                           {drugInfo.name}
                         </h3>
                         <p className="text-sm text-gray-500">
@@ -419,7 +426,7 @@ export default function ScannerPage() {
                           transition={{ delay: 0.2 }}
                           className="text-gray-500 mb-4"
                         >
-                          No QR code scanned yet
+                          No barcode scanned yet
                         </motion.p>
                       )}
                       <motion.div
@@ -433,7 +440,7 @@ export default function ScannerPage() {
                       >
                         <Button
                           onClick={handleStartScan}
-                          className="mx-auto bg-[#101010] hover:bg-[#101010]/90 text-white"
+                          className="mx-auto bg-primary hover:bg-primary/90"
                         >
                           <Camera className="mr-2 h-4 w-4" />
                           Start Scanning
@@ -451,7 +458,7 @@ export default function ScannerPage() {
                     className="w-full"
                   >
                     <Button onClick={handleStartScan} className="w-full">
-                      Scan Another Code
+                      Scan Another Barcode
                     </Button>
                   </motion.div>
                 </CardFooter>

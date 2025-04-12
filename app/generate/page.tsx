@@ -1,8 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { QRCodeSVG } from "qrcode.react";
 import { ArrowLeft, Download, Copy } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Slider } from "@/components/ui/slider";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 // Mock database of drug information (same as in scanner page)
 const drugDatabase = {
@@ -63,14 +66,56 @@ const drugDatabase = {
       "Hypotension",
     ],
   },
-};
+} as const;
+
+type DrugId = keyof typeof drugDatabase;
 
 export default function GeneratePage() {
-  const [selectedDrug, setSelectedDrug] = useState<
-    "MED001" | "MED002" | "MED003"
-  >("MED001");
-  const [qrSize, setQrSize] = useState(200);
+  const [selectedDrug, setSelectedDrug] = useState<DrugId>("MED001");
+  const [barcodeWidth, setBarcodeWidth] = useState(300);
+  const [barcodeHeight, setBarcodeHeight] = useState(80);
+  const [barcodeFormat, setBarcodeFormat] = useState("CODE128");
   const [copied, setCopied] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Generate barcode when component mounts or dependencies change
+  useEffect(() => {
+    const generateBarcode = async () => {
+      if (!canvasRef.current) return;
+
+      try {
+        // Dynamically import JsBarcode to avoid SSR issues
+        const JsBarcode = (await import("jsbarcode")).default;
+
+        // Clear previous barcode
+        const ctx = canvasRef.current.getContext("2d");
+        if (ctx) {
+          ctx.clearRect(
+            0,
+            0,
+            canvasRef.current.width,
+            canvasRef.current.height
+          );
+        }
+
+        // Generate new barcode
+        JsBarcode(canvasRef.current, selectedDrug, {
+          format: barcodeFormat,
+          width: 2,
+          height: barcodeHeight,
+          displayValue: true,
+          fontSize: 16,
+          margin: 10,
+          background: "#ffffff",
+          lineColor: "#000000",
+        });
+      } catch (error) {
+        console.error("Error generating barcode:", error);
+      }
+    };
+
+    generateBarcode();
+  }, [selectedDrug, barcodeHeight, barcodeFormat]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(selectedDrug);
@@ -79,30 +124,13 @@ export default function GeneratePage() {
   };
 
   const handleDownload = () => {
-    const svg = document.getElementById("qr-code-svg");
-    if (!svg) return;
+    if (!canvasRef.current) return;
 
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
-
-    img.onload = () => {
-      canvas.width = qrSize;
-      canvas.height = qrSize;
-      ctx?.drawImage(img, 0, 0);
-      const pngFile = canvas.toDataURL("image/png");
-
-      // Download the PNG file
-      const downloadLink = document.createElement("a");
-      downloadLink.download = `${selectedDrug}-QRCode.png`;
-      downloadLink.href = pngFile;
-      downloadLink.click();
-    };
-
-    img.src =
-      "data:image/svg+xml;base64," +
-      btoa(unescape(encodeURIComponent(svgData)));
+    // Create a download link for the canvas
+    const link = document.createElement("a");
+    link.download = `${selectedDrug}-Barcode.png`;
+    link.href = canvasRef.current.toDataURL("image/png");
+    link.click();
   };
 
   return (
@@ -129,19 +157,19 @@ export default function GeneratePage() {
       >
         <Card className="overflow-hidden border-2 border-gray-100 shadow-lg">
           <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">
-            <CardTitle>QR Code Generator</CardTitle>
+            <CardTitle>Barcode Generator</CardTitle>
             <CardDescription>
-              Generate QR codes for testing the medication scanner
+              Generate barcodes for testing the medication scanner
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Select Medication</label>
+                <Label className="text-sm font-medium">Select Medication</Label>
                 <Select
                   value={selectedDrug}
-                  onValueChange={(value: "MED001" | "MED002" | "MED003") =>
-                    setSelectedDrug(value)
+                  onValueChange={(value: string) =>
+                    setSelectedDrug(value as DrugId)
                   }
                 >
                   <SelectTrigger>
@@ -157,53 +185,86 @@ export default function GeneratePage() {
                 </Select>
               </div>
 
-              <Tabs defaultValue="qrcode" className="w-full">
+              <Tabs defaultValue="barcode" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="qrcode">QR Code</TabsTrigger>
+                  <TabsTrigger value="barcode">Barcode</TabsTrigger>
                   <TabsTrigger value="details">Medication Details</TabsTrigger>
                 </TabsList>
-                <TabsContent value="qrcode" className="mt-4">
-                  <div className="flex flex-col items-center justify-center space-y-4">
-                    <div className="p-4 bg-white rounded-lg shadow-sm border">
-                      <QRCodeSVG
-                        id="qr-code-svg"
-                        value={selectedDrug}
-                        size={qrSize}
-                        level="H" // High error correction
-                        includeMargin={true}
-                      />
+                <TabsContent value="barcode" className="mt-4">
+                  <div className="flex flex-col items-center justify-center space-y-6">
+                    <div className="p-4 bg-white rounded-lg shadow-sm border w-full overflow-hidden">
+                      <canvas ref={canvasRef} className="w-full" />
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setQrSize(Math.max(100, qrSize - 50))}
-                        disabled={qrSize <= 100}
-                      >
-                        Smaller
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setQrSize(Math.min(400, qrSize + 50))}
-                        disabled={qrSize >= 400}
-                      >
-                        Larger
-                      </Button>
-                    </div>
-                    <div className="flex items-center space-x-2 w-full">
-                      <Button
-                        className="flex-1"
-                        variant="outline"
-                        onClick={handleCopy}
-                      >
-                        {copied ? "Copied!" : "Copy Code"}
-                        <Copy className="ml-2 h-4 w-4" />
-                      </Button>
-                      <Button className="flex-1" onClick={handleDownload}>
-                        Download
-                        <Download className="ml-2 h-4 w-4" />
-                      </Button>
+
+                    <div className="space-y-4 w-full">
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <Label className="text-sm font-medium">
+                            Barcode Height
+                          </Label>
+                          <span className="text-xs text-gray-500">
+                            {barcodeHeight}px
+                          </span>
+                        </div>
+                        <Slider
+                          value={[barcodeHeight]}
+                          min={40}
+                          max={120}
+                          step={10}
+                          onValueChange={(value) => setBarcodeHeight(value[0])}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">
+                          Barcode Format
+                        </Label>
+                        <RadioGroup
+                          value={barcodeFormat}
+                          onValueChange={setBarcodeFormat}
+                          className="grid grid-cols-2 gap-2"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="CODE128" id="code128" />
+                            <Label htmlFor="code128" className="text-sm">
+                              CODE128
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="CODE39" id="code39" />
+                            <Label htmlFor="code39" className="text-sm">
+                              CODE39
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="EAN13" id="ean13" />
+                            <Label htmlFor="ean13" className="text-sm">
+                              EAN-13
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="UPC" id="upc" />
+                            <Label htmlFor="upc" className="text-sm">
+                              UPC
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+
+                      <div className="flex items-center space-x-2 w-full">
+                        <Button
+                          className="flex-1"
+                          variant="outline"
+                          onClick={handleCopy}
+                        >
+                          {copied ? "Copied!" : "Copy Code"}
+                          <Copy className="ml-2 h-4 w-4" />
+                        </Button>
+                        <Button className="flex-1" onClick={handleDownload}>
+                          Download
+                          <Download className="ml-2 h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </TabsContent>
