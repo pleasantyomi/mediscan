@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -12,9 +11,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ArrowLeft, Camera, X } from "lucide-react";
+import { ArrowLeft, Camera, X, AlertTriangle, Calendar } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface DrugInfo {
   id: string;
@@ -22,9 +22,11 @@ interface DrugInfo {
   description: string;
   dosage: string;
   sideEffects: string[];
+  manufactureDate: string;
+  expiryDate: string;
 }
 
-// Mock database of drug information
+// Mock database of drug information with added manufacture and expiry dates
 const drugDatabase: Record<string, DrugInfo> = {
   MED001: {
     id: "MED001",
@@ -40,6 +42,8 @@ const drugDatabase: Record<string, DrugInfo> = {
       "Headache",
       "Rash",
     ],
+    manufactureDate: "2023-06-15",
+    expiryDate: "2025-06-15",
   },
   MED002: {
     id: "MED002",
@@ -48,6 +52,8 @@ const drugDatabase: Record<string, DrugInfo> = {
     dosage:
       "250-500mg every 8 hours or 500-875mg every 12 hours, depending on infection severity.",
     sideEffects: ["Diarrhea", "Stomach pain", "Nausea", "Vomiting", "Rash"],
+    manufactureDate: "2023-03-10",
+    expiryDate: "2024-03-10", // Expired date (assuming current date is after this)
   },
   MED003: {
     id: "MED003",
@@ -63,6 +69,8 @@ const drugDatabase: Record<string, DrugInfo> = {
       "Fatigue",
       "Hypotension",
     ],
+    manufactureDate: "2023-09-22",
+    expiryDate: "2026-09-22",
   },
 };
 
@@ -72,7 +80,17 @@ export default function ScannerPage() {
   const [drugInfo, setDrugInfo] = useState<DrugInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [html5QrCode, setHtml5QrCode] = useState<Html5Qrcode | null>(null);
+  const [isExpired, setIsExpired] = useState(false);
   const scannerInitialized = useRef(false);
+
+  // Check if drug is expired
+  useEffect(() => {
+    if (drugInfo) {
+      const today = new Date();
+      const expiryDate = new Date(drugInfo.expiryDate);
+      setIsExpired(today > expiryDate);
+    }
+  }, [drugInfo]);
 
   // Clean up scanner when component unmounts
   useEffect(() => {
@@ -252,11 +270,21 @@ export default function ScannerPage() {
     scannerInitialized.current = false;
   };
 
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    const options: Intl.DateTimeFormatOptions = {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+
   return (
     <>
       {scanning ? (
         <div className="fixed inset-0 z-50 bg-black">
-          <div className="relative h-full w-full">
+          <div className="relative w-full h-full">
             {/* This is the element that will contain the scanner */}
             <div id="reader" className="absolute inset-0 w-full h-full"></div>
 
@@ -278,24 +306,24 @@ export default function ScannerPage() {
             </div>
 
             {/* Header with back button */}
-            <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center">
+            <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4">
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-white bg-black/50 rounded-full"
+                className="text-white rounded-full bg-black/50"
                 onClick={handleStopScan}
               >
-                <X className="h-6 w-6" />
+                <X className="w-6 h-6" />
               </Button>
 
-              <div className="text-white text-sm font-medium bg-black/50 px-4 py-2 rounded-full">
+              <div className="px-4 py-2 text-sm font-medium text-white rounded-full bg-black/50">
                 Scan Barcode
               </div>
             </div>
 
             {/* Instructions at the bottom */}
             <div className="absolute bottom-0 left-0 right-0 p-6 text-center">
-              <p className="text-white text-sm mb-4 bg-black/50 p-2 rounded-lg">
+              <p className="p-2 mb-4 text-sm text-white rounded-lg bg-black/50">
                 Position the barcode within the frame to scan
               </p>
               <Button
@@ -303,14 +331,14 @@ export default function ScannerPage() {
                 onClick={handleStopScan}
                 className="w-full"
               >
-                <X className="mr-2 h-4 w-4" />
+                <X className="w-4 h-4 mr-2" />
                 Cancel Scan
               </Button>
             </div>
           </div>
         </div>
       ) : (
-        <div className="container mx-auto max-w-md p-4">
+        <div className="container max-w-md p-4 mx-auto">
           <motion.div
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
@@ -321,7 +349,7 @@ export default function ScannerPage() {
               href="/"
               className="flex items-center text-primary hover:underline"
             >
-              <ArrowLeft className="mr-2 h-4 w-4" />
+              <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Home
             </Link>
           </motion.div>
@@ -353,43 +381,104 @@ export default function ScannerPage() {
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.1 }}
                       >
-                        <h3 className="font-semibold text-lg text-primary">
+                        <h3 className="text-lg font-semibold text-primary">
                           {drugInfo.name}
                         </h3>
                         <p className="text-sm text-gray-500">
                           ID: {drugInfo.id}
                         </p>
                       </motion.div>
+
+                      {/* Expiry Alert */}
+                      {isExpired && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.15 }}
+                        >
+                          <Alert
+                            variant="destructive"
+                            className="border-red-500 bg-red-50"
+                          >
+                            <AlertTriangle className="w-4 h-4" />
+                            <AlertTitle>Expired Medication</AlertTitle>
+                            <AlertDescription>
+                              This medication has expired and should not be
+                              used. Please consult your healthcare provider.
+                            </AlertDescription>
+                          </Alert>
+                        </motion.div>
+                      )}
+
                       <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.2 }}
-                        className="p-4 bg-gray-50 rounded-lg"
+                        className="p-4 rounded-lg bg-gray-50"
                       >
                         <h4 className="font-medium text-gray-700">
                           Description
                         </h4>
-                        <p className="text-sm mt-1">{drugInfo.description}</p>
+                        <p className="mt-1 text-sm">{drugInfo.description}</p>
                       </motion.div>
+
+                      {/* Manufacture and Expiry Dates */}
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.25 }}
+                        className={`p-4 rounded-lg ${
+                          isExpired
+                            ? "bg-red-50 border border-red-200"
+                            : "bg-gray-50"
+                        }`}
+                      >
+                        <h4 className="flex items-center font-medium text-gray-700">
+                          <Calendar className="w-4 h-4 mr-2" />
+                          Dates
+                        </h4>
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          <div>
+                            <p className="text-xs text-gray-500">
+                              Manufactured
+                            </p>
+                            <p className="text-sm font-medium">
+                              {formatDate(drugInfo.manufactureDate)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Expires</p>
+                            <p
+                              className={`text-sm font-medium ${
+                                isExpired ? "text-red-600" : ""
+                              }`}
+                            >
+                              {formatDate(drugInfo.expiryDate)}
+                              {isExpired && " (EXPIRED)"}
+                            </p>
+                          </div>
+                        </div>
+                      </motion.div>
+
                       <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.3 }}
-                        className="p-4 bg-gray-50 rounded-lg"
+                        className="p-4 rounded-lg bg-gray-50"
                       >
                         <h4 className="font-medium text-gray-700">Dosage</h4>
-                        <p className="text-sm mt-1">{drugInfo.dosage}</p>
+                        <p className="mt-1 text-sm">{drugInfo.dosage}</p>
                       </motion.div>
                       <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.4 }}
-                        className="p-4 bg-gray-50 rounded-lg"
+                        className="p-4 rounded-lg bg-gray-50"
                       >
                         <h4 className="font-medium text-gray-700">
                           Side Effects
                         </h4>
-                        <ul className="list-disc list-inside text-sm mt-1">
+                        <ul className="mt-1 text-sm list-disc list-inside">
                           {drugInfo.sideEffects.map((effect, index) => (
                             <motion.li
                               key={index}
@@ -409,13 +498,13 @@ export default function ScannerPage() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="text-center py-8"
+                      className="py-8 text-center"
                     >
                       {error ? (
                         <motion.div
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="text-red-500 mb-4 p-3 bg-red-50 rounded-lg"
+                          className="p-3 mb-4 text-red-500 rounded-lg bg-red-50"
                         >
                           {error}
                         </motion.div>
@@ -424,7 +513,7 @@ export default function ScannerPage() {
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           transition={{ delay: 0.2 }}
-                          className="text-gray-500 mb-4"
+                          className="mb-4 text-gray-500"
                         >
                           No barcode scanned yet
                         </motion.p>
@@ -442,7 +531,7 @@ export default function ScannerPage() {
                           onClick={handleStartScan}
                           className="mx-auto bg-primary hover:bg-primary/90"
                         >
-                          <Camera className="mr-2 h-4 w-4" />
+                          <Camera className="w-4 h-4 mr-2" />
                           Start Scanning
                         </Button>
                       </motion.div>
@@ -451,7 +540,7 @@ export default function ScannerPage() {
                 </AnimatePresence>
               </CardContent>
               {drugInfo && (
-                <CardFooter className="bg-gray-50 border-t">
+                <CardFooter className="border-t bg-gray-50">
                   <motion.div
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
