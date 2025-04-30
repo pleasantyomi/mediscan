@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -16,6 +17,7 @@ import { ArrowLeft, Camera, X, AlertTriangle, Calendar } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useSearchParams } from "next/navigation";
 
 interface DrugInfo {
   id: string;
@@ -73,9 +75,10 @@ const drugDatabase: Record<string, DrugInfo> = {
     manufactureDate: "2023-09-22",
     expiryDate: "2026-09-22",
   },
-};
+} as const;
 
 export default function ScannerPage() {
+  const searchParams = useSearchParams();
   const [scanning, setScanning] = useState(false);
   const [scannerId, setScannerId] = useState<string | null>(null);
   const [drugInfo, setDrugInfo] = useState<DrugInfo | null>(null);
@@ -83,6 +86,15 @@ export default function ScannerPage() {
   const [html5QrCode, setHtml5QrCode] = useState<Html5Qrcode | null>(null);
   const [isExpired, setIsExpired] = useState(false);
   const scannerInitialized = useRef(false);
+
+  // Check for ID in URL params (for direct navigation from search)
+  useEffect(() => {
+    const id = searchParams.get("id");
+    if (id && drugDatabase[id]) {
+      setDrugInfo(drugDatabase[id]);
+      setScannerId(id);
+    }
+  }, [searchParams]);
 
   // Check if drug is expired
   useEffect(() => {
