@@ -3,7 +3,7 @@ import { Button } from "./button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./card";
 import { Input } from "./input";
 import { Label } from "./label";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion} from "framer-motion";
 import { RadioGroup, RadioGroupItem } from "./radio-group";
 import { FeedbackInfo } from "@/lib/types";
 
