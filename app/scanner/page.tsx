@@ -18,64 +18,11 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useSearchParams } from "next/navigation";
-
-interface DrugInfo {
-  id: string;
-  name: string;
-  description: string;
-  dosage: string;
-  sideEffects: string[];
-  manufactureDate: string;
-  expiryDate: string;
-}
-
-// Mock database of drug information with added manufacture and expiry dates
-const drugDatabase: Record<string, DrugInfo> = {
-  MED001: {
-    id: "MED001",
-    name: "Acetaminophen",
-    description:
-      "Pain reliever and fever reducer used for mild to moderate pain relief.",
-    dosage:
-      "325-650mg every 4-6 hours as needed. Do not exceed 3000mg per day.",
-    sideEffects: [
-      "Nausea",
-      "Stomach pain",
-      "Loss of appetite",
-      "Headache",
-      "Rash",
-    ],
-    manufactureDate: "2023-06-15",
-    expiryDate: "2025-06-15",
-  },
-  MED002: {
-    id: "MED002",
-    name: "Amoxicillin",
-    description: "Antibiotic used to treat a variety of bacterial infections.",
-    dosage:
-      "250-500mg every 8 hours or 500-875mg every 12 hours, depending on infection severity.",
-    sideEffects: ["Diarrhea", "Stomach pain", "Nausea", "Vomiting", "Rash"],
-    manufactureDate: "2023-03-10",
-    expiryDate: "2024-03-10", // Expired date (assuming current date is after this)
-  },
-  MED003: {
-    id: "MED003",
-    name: "Lisinopril",
-    description:
-      "ACE inhibitor used to treat high blood pressure and heart failure.",
-    dosage:
-      "10-40mg once daily. May start with lower dose of 5mg in some patients.",
-    sideEffects: [
-      "Dizziness",
-      "Headache",
-      "Dry cough",
-      "Fatigue",
-      "Hypotension",
-    ],
-    manufactureDate: "2023-09-22",
-    expiryDate: "2026-09-22",
-  },
-} as const;
+import { PriceComparison } from "@/components/ui/price-comparison";
+import { FeedbackForm } from "@/components/ui/feedback-form";
+import { DrugInfo, FeedbackInfo } from "@/lib/types";
+import { drugDatabase, addFeedback, getDrugFeedback } from "@/lib/data";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function ScannerPage() {
   const searchParams = useSearchParams();
@@ -85,14 +32,23 @@ export default function ScannerPage() {
   const [error, setError] = useState<string | null>(null);
   const [html5QrCode, setHtml5QrCode] = useState<Html5Qrcode | null>(null);
   const [isExpired, setIsExpired] = useState(false);
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [feedback, setFeedback] = useState<FeedbackInfo[]>([]);
   const scannerInitialized = useRef(false);
 
-  // Check for ID in URL params (for direct navigation from search)
+  // Load drug info and feedback
   useEffect(() => {
     const id = searchParams.get("id");
-    if (id && drugDatabase[id]) {
-      setDrugInfo(drugDatabase[id]);
+    if (id && drugDatabase[id as keyof typeof drugDatabase]) {
+      const drug = drugDatabase[id as keyof typeof drugDatabase];
+      setDrugInfo({
+        ...drug,
+        sideEffects: [...drug.sideEffects],
+      });
       setScannerId(id);
+      // Load existing feedback for this drug
+      const drugFeedback = getDrugFeedback(id);
+      setFeedback(drugFeedback);
     }
   }, [searchParams]);
 
@@ -240,11 +196,18 @@ export default function ScannerPage() {
       setScanning(false);
       scannerInitialized.current = false;
 
-      // Process the barcode data
-      if (drugDatabase[decodedText]) {
-        setDrugInfo(drugDatabase[decodedText]);
+      if (decodedText in drugDatabase) {
+        const drug = drugDatabase[decodedText as keyof typeof drugDatabase];
+        setDrugInfo({
+          ...drug,
+          sideEffects: [...drug.sideEffects],
+        });
         setScannerId(decodedText);
         setError(null);
+
+        // Load existing feedback for this drug
+        const drugFeedback = getDrugFeedback(decodedText);
+        setFeedback(drugFeedback);
 
         // Save to history in localStorage
         const history = JSON.parse(localStorage.getItem("scanHistory") || "[]");
@@ -258,6 +221,7 @@ export default function ScannerPage() {
       } else {
         setError(`No information found for code: ${decodedText}`);
         setDrugInfo(null);
+        setFeedback([]);
       }
     } catch (err) {
       console.error("Error processing barcode:", err);
@@ -291,6 +255,16 @@ export default function ScannerPage() {
       day: "numeric",
     };
     return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+
+  const handleFeedbackSubmit = async (feedbackData: Omit<FeedbackInfo, 'id' | 'timestamp'>) => {
+    const newFeedback = addFeedback(feedbackData);
+    setFeedback(prev => [newFeedback, ...prev]);
+    setShowFeedbackForm(false);
+  };
+
+  const handleFeedbackCancel = () => {
+    setShowFeedbackForm(false);
   };
 
   return (
@@ -486,23 +460,108 @@ export default function ScannerPage() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.4 }}
-                        className="p-4 rounded-lg bg-gray-50"
                       >
-                        <h4 className="font-medium text-gray-700">
-                          Side Effects
-                        </h4>
-                        <ul className="mt-1 text-sm list-disc list-inside">
-                          {drugInfo.sideEffects.map((effect, index) => (
-                            <motion.li
-                              key={index}
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: 0.4 + index * 0.1 }}
-                            >
-                              {effect}
-                            </motion.li>
-                          ))}
-                        </ul>
+                        <Tabs defaultValue="details" className="w-full">
+                          <TabsList className="grid w-full grid-cols-3">
+                            <TabsTrigger value="details">Details</TabsTrigger>
+                            <TabsTrigger value="prices">Prices</TabsTrigger>
+                            <TabsTrigger value="feedback">Feedback</TabsTrigger>
+                          </TabsList>
+                          <TabsContent value="details">
+                            <div className="space-y-4">
+                              <div className="p-4 rounded-lg bg-gray-50">
+                                <h4 className="font-medium text-gray-700">Side Effects</h4>
+                                <ul className="mt-1 text-sm list-disc list-inside">
+                                  {drugInfo.sideEffects.map((effect, index) => (
+                                    <motion.li
+                                      key={index}
+                                      initial={{ opacity: 0, x: -10 }}
+                                      animate={{ opacity: 1, x: 0 }}
+                                      transition={{ delay: 0.1 + index * 0.1 }}
+                                    >
+                                      {effect}
+                                    </motion.li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          </TabsContent>
+                          <TabsContent value="prices">
+                            {drugInfo.prices && drugInfo.prices.length > 0 ? (
+                              <PriceComparison prices={drugInfo.prices} />
+                            ) : (
+                              <div className="p-4 text-center text-gray-500">
+                                No price information available
+                              </div>
+                            )}
+                          </TabsContent>
+                          <TabsContent value="feedback">
+                            <div className="space-y-4">
+                              {showFeedbackForm ? (
+                                <FeedbackForm
+                                  drugId={drugInfo.id}
+                                  drugName={drugInfo.name}
+                                  onSubmit={handleFeedbackSubmit}
+                                  onCancel={handleFeedbackCancel}
+                                />
+                              ) : (
+                                <div className="text-center">
+                                  <Button
+                                    onClick={() => setShowFeedbackForm(true)}
+                                    className="mb-4"
+                                  >
+                                    Share Your Experience
+                                  </Button>
+                                </div>
+                              )}
+                              {feedback.length > 0 && (
+                                <div className="space-y-3">
+                                  {feedback.map((f) => (
+                                    <motion.div
+                                      key={f.id}
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                      className="p-4 rounded-lg bg-gray-50"
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center space-x-1">
+                                          {Array.from({ length: 5 }).map((_, i) => (
+                                            <span
+                                              key={i}
+                                              className={`text-sm ${
+                                                i < f.rating ? 'text-yellow-500' : 'text-gray-300'
+                                              }`}
+                                            >
+                                              ★
+                                            </span>
+                                          ))}
+                                        </div>
+                                        <span className="text-xs text-gray-500">
+                                          {new Date(f.timestamp).toLocaleDateString()}
+                                        </span>
+                                      </div>
+                                      {f.comment && (
+                                        <p className="mt-2 text-sm">{f.comment}</p>
+                                      )}
+                                      {f.priceInfo && (
+                                        <div className="p-2 mt-2 text-sm rounded bg-primary/5">
+                                          <p className="font-medium">
+                                            ${f.priceInfo.price.toFixed(2)} at {f.priceInfo.pharmacy}
+                                          </p>
+                                          {f.priceInfo.location && (
+                                            <p className="text-xs text-gray-500">
+                                              {f.priceInfo.location}
+                                            </p>
+                                          )}
+                                        </div>
+                                      )}
+                                    </motion.div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </TabsContent>
+                        </Tabs>
                       </motion.div>
                     </motion.div>
                   ) : (
