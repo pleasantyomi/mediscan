@@ -10,57 +10,7 @@ import { Search, Scan, History, Pill, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-
-// Mock database of drug information with added manufacture and expiry dates
-export const drugDatabase = {
-  MED001: {
-    id: "MED001",
-    name: "Acetaminophen",
-    description:
-      "Pain reliever and fever reducer used for mild to moderate pain relief.",
-    manufactureDate: "2023-06-15",
-    expiryDate: "2025-06-15",
-  },
-  MED002: {
-    id: "MED002",
-    name: "Amoxicillin",
-    description: "Antibiotic used to treat a variety of bacterial infections.",
-    manufactureDate: "2023-03-10",
-    expiryDate: "2024-03-10",
-  },
-  MED003: {
-    id: "MED003",
-    name: "Lisinopril",
-    description:
-      "ACE inhibitor used to treat high blood pressure and heart failure.",
-    manufactureDate: "2023-09-22",
-    expiryDate: "2026-09-22",
-  },
-  MED004: {
-    id: "MED004",
-    name: "Loratadine",
-    description:
-      "Non-drowsy antihistamine used to treat allergy symptoms such as sneezing, runny nose, and itchy eyes.",
-    manufactureDate: "2024-01-18",
-    expiryDate: "2026-01-18",
-  },
-  MED005: {
-    id: "MED005",
-    name: "Ibuprofen",
-    description:
-      "Nonsteroidal anti-inflammatory drug (NSAID) used to relieve pain, reduce inflammation, and lower fever.",
-    manufactureDate: "2023-11-05",
-    expiryDate: "2025-11-05",
-  },
-  MED006: {
-    id: "MED006",
-    name: "Metformin",
-    description:
-      "Oral diabetes medication used to control blood sugar levels in people with type 2 diabetes.",
-    manufactureDate: "2023-07-12",
-    expiryDate: "2025-07-12",
-  },
-}
+import { drugDatabase } from "@/lib/data";
 
 export default function Home() {
   const router = useRouter();
