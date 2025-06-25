@@ -129,4 +129,98 @@ export const drugDatabase: Record<string, DrugInfo> = {
       },
     ],
   },
+MED004: {
+    id: "MED004",
+    name: "Loratadine",
+    description: "Non-drowsy antihistamine used to treat allergy symptoms such as sneezing, runny nose, and itchy eyes.",
+    dosage: "10mg once daily.",
+    sideEffects: [
+      "Headache",
+      "Dry mouth",
+      "Fatigue",
+      "Sleepiness (rare)",
+    ],
+    manufactureDate: "2024-01-18",
+    expiryDate: "2026-01-18",
+    prices: [
+      {
+        pharmacy: "CVS Pharmacy",
+        price: 6.99,
+        location: "Downtown",
+        lastUpdated: "2025-06-20",
+      },
+      {
+        pharmacy: "Walgreens",
+        price: 5.49,
+        location: "West Side",
+        lastUpdated: "2025-06-18",
+      },
+    ],
+  },
+
+  MED005: {
+    id: "MED005",
+    name: "Ibuprofen",
+    description: "Nonsteroidal anti-inflammatory drug (NSAID) used to relieve pain, reduce inflammation, and lower fever.",
+    dosage: "200-400mg every 4-6 hours as needed. Do not exceed 1200mg per day without medical advice.",
+    sideEffects: [
+      "Stomach pain",
+      "Heartburn",
+      "Nausea",
+      "Dizziness",
+      "Rash",
+    ],
+    manufactureDate: "2023-11-05",
+    expiryDate: "2025-11-05",
+    prices: [
+      {
+        pharmacy: "CVS Pharmacy",
+        price: 9.49,
+        location: "Downtown",
+        lastUpdated: "2025-06-15",
+      },
+      {
+        pharmacy: "Walgreens",
+        price: 8.75,
+        location: "West Side",
+        lastUpdated: "2025-06-15",
+      },
+      {
+        pharmacy: "RiteMed",
+        price: 7.99,
+        location: "East Side",
+        lastUpdated: "2025-06-10",
+      },
+    ],
+  },
+
+  MED006: {
+    id: "MED006",
+    name: "Metformin",
+    description: "Oral diabetes medication used to control blood sugar levels in people with type 2 diabetes.",
+    dosage: "500-1000mg twice daily with meals. Maximum dose: 2000mg/day.",
+    sideEffects: [
+      "Diarrhea",
+      "Nausea",
+      "Metallic taste",
+      "Abdominal discomfort",
+      "Loss of appetite",
+    ],
+    manufactureDate: "2023-07-12",
+    expiryDate: "2025-07-12",
+    prices: [
+      {
+        pharmacy: "CVS Pharmacy",
+        price: 10.99,
+        location: "Downtown",
+        lastUpdated: "2025-06-12",
+      },
+      {
+        pharmacy: "Walgreens",
+        price: 9.99,
+        location: "West Side",
+        lastUpdated: "2025-06-12",
+      },
+    ],
+  },
 } as const;
